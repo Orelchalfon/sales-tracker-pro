@@ -1,5 +1,7 @@
 import * as XLSX from "xlsx";
+import { Download } from "lucide-react";
 import type { Sale } from "@/types/sale";
+import { formatSaleDate, HEBREW_MONTHS } from "@/types/sale";
 
 type Props = {
   sales: Sale[];
@@ -8,16 +10,16 @@ type Props = {
 };
 
 export function ExportButton({ sales, year, month }: Props) {
-  const handleExport = () => {
-    if (sales.length === 0) {
-      alert("אין מכירות לייצא לחודש זה");
-      return;
-    }
+  const disabled = sales.length === 0;
 
+  const handleExport = () => {
+    if (disabled) return;
+
+    const header = ["תאריך", "שם המערכת", "מחיר המערכת (₪)", "עמלת מכירה (₪)"];
     const rows: (string | number)[][] = [
-      ["תאריך", "שם המערכת", "מחיר המערכת", "עמלת מכירה"],
+      header,
       ...sales.map((s) => [
-        new Date(s.saleDate).toLocaleDateString("he-IL"),
+        formatSaleDate(s.saleDate),
         s.systemName,
         s.systemPrice,
         s.commission,
@@ -29,17 +31,27 @@ export function ExportButton({ sales, year, month }: Props) {
 
     rows.push([]);
     rows.push(["כמות מערכות שנמכרו", sales.length]);
-    rows.push(['סה״כ מכירות', totalSales]);
-    rows.push(['סה״כ עמלה', totalCommission]);
+    rows.push(["סה״כ מכירות", totalSales]);
+    rows.push(["סה״כ עמלה", totalCommission]);
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 16 }];
-    if (!ws["!props"]) ws["!props"] = {};
-    // RTL sheet
-    (ws as XLSX.WorkSheet & { ["!views"]?: unknown[] })["!views"] = [{ RTL: true }];
+    ws["!cols"] = [{ wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 18 }];
+    // Mark sheet as RTL for Excel
+    ws["!views"] = [{ RTL: true }];
+
+    // Currency formatting for price/commission columns (columns C & D, rows 2..n+1)
+    const dataRowCount = sales.length;
+    for (let i = 0; i < dataRowCount; i++) {
+      const r = i + 1; // row index in sheet (0-based; +1 because header is row 0)
+      const priceCell = XLSX.utils.encode_cell({ r, c: 2 });
+      const comCell = XLSX.utils.encode_cell({ r, c: 3 });
+      if (ws[priceCell]) ws[priceCell].z = '#,##0" ₪"';
+      if (ws[comCell]) ws[comCell].z = '#,##0" ₪"';
+    }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "דוח מכירות");
+    const sheetName = `${HEBREW_MONTHS[month]} ${year}`.slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
     const mm = String(month + 1).padStart(2, "0");
     XLSX.writeFile(wb, `sales-report-${year}-${mm}.xlsx`);
@@ -47,9 +59,12 @@ export function ExportButton({ sales, year, month }: Props) {
 
   return (
     <button
+      type="button"
       onClick={handleExport}
-      className="h-11 px-5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+      disabled={disabled}
+      className="h-11 px-5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     >
+      <Download className="h-4 w-4" />
       <span>הורד דוח אקסל</span>
     </button>
   );
