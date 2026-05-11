@@ -75,11 +75,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "מעקב מכירות חודשי" },
       { name: "description", content: "ניהול מכירות, עמלות וייצוא דוח חודשי לאקסל" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "מעקב מכירות חודשי" },
+      { property: "og:description", content: "ניהול מכירות, עמלות וייצוא דוח חודשי לאקסל" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "מעקב מכירות חודשי" },
+      { name: "twitter:description", content: "ניהול מכירות, עמלות וייצוא דוח חודשי לאקסל" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c6540904-fcfd-4c8d-9c07-3d846bb02230/id-preview-057d21cb--cd9d3b5c-1b09-4355-bcf6-2ec23b3c871a.lovable.app-1778493134993.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c6540904-fcfd-4c8d-9c07-3d846bb02230/id-preview-057d21cb--cd9d3b5c-1b09-4355-bcf6-2ec23b3c871a.lovable.app-1778493134993.png" },
     ],
     links: [
       {
