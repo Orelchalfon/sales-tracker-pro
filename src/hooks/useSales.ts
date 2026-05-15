@@ -1,75 +1,70 @@
-import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { Sale, SaleInput } from "@/types/sale";
+import {
+  fetchSalesForMonth,
+  fetchSaleYears,
+  insertSale,
+  updateSale as apiUpdateSale,
+  deleteSale as apiDeleteSale,
+} from "@/integrations/supabase/sales-api";
 
-const STORAGE_KEY = "sales-tracker-v1";
+export function useSales(year: number, month: number) {
+  const queryClient = useQueryClient();
 
-function generateId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
+  const salesQuery = useQuery<Sale[]>({
+    queryKey: ["sales", year, month],
+    queryFn: () => fetchSalesForMonth(year, month),
+  });
 
-function isSale(value: unknown): value is Sale {
-  if (!value || typeof value !== "object") return false;
-  const s = value as Record<string, unknown>;
-  return (
-    typeof s.id === "string" &&
-    typeof s.saleDate === "string" &&
-    typeof s.systemName === "string" &&
-    typeof s.systemPrice === "number" &&
-    typeof s.commission === "number" &&
-    typeof s.createdAt === "string"
-  );
-}
+  const yearsQuery = useQuery<number[]>({
+    queryKey: ["sale-years"],
+    queryFn: fetchSaleYears,
+    staleTime: 5 * 60 * 1000,
+  });
 
-function loadSales(): Sale[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isSale);
-  } catch {
-    return [];
-  }
-}
+  const addMutation = useMutation({
+    mutationFn: (input: SaleInput) => insertSale(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sale-years"] });
+      toast.success("המכירה נוספה בהצלחה");
+    },
+    onError: (err: Error) => {
+      toast.error(`שגיאה בהוספת המכירה: ${err.message}`);
+    },
+  });
 
-export function useSales() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const updateMutation = useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<SaleInput> }) =>
+      apiUpdateSale(id, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      toast.success("המכירה עודכנה בהצלחה");
+    },
+    onError: (err: Error) => {
+      toast.error(`שגיאה בעדכון המכירה: ${err.message}`);
+    },
+  });
 
-  useEffect(() => {
-    setSales(loadSales());
-    setLoaded(true);
-  }, []);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiDeleteSale(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sale-years"] });
+      toast.success("המכירה נמחקה");
+    },
+    onError: (err: Error) => {
+      toast.error(`שגיאה במחיקת המכירה: ${err.message}`);
+    },
+  });
 
-  useEffect(() => {
-    if (!loaded || typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sales));
-    } catch {
-      // quota or privacy mode — ignore
-    }
-  }, [sales, loaded]);
-
-  const addSale = (input: SaleInput) => {
-    const newSale: Sale = {
-      ...input,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    };
-    setSales((prev) => [...prev, newSale]);
+  return {
+    sales: salesQuery.data ?? [],
+    isLoading: salesQuery.isLoading,
+    availableYears: yearsQuery.data ?? [],
+    addSale: (input: SaleInput) => addMutation.mutate(input),
+    updateSale: (id: string, patch: Partial<SaleInput>) => updateMutation.mutate({ id, patch }),
+    deleteSale: (id: string) => deleteMutation.mutate(id),
   };
-
-  const updateSale = (id: string, patch: Partial<SaleInput>) => {
-    setSales((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-  };
-
-  const deleteSale = (id: string) => {
-    setSales((prev) => prev.filter((s) => s.id !== id));
-  };
-
-  return { sales, addSale, updateSale, deleteSale, loaded };
 }

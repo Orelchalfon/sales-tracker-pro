@@ -7,16 +7,19 @@ type Props = {
   sales: Sale[];
   year: number;
   month: number; // 0-indexed
+  displayName: string;
 };
 
-export function ExportButton({ sales, year, month }: Props) {
+export function ExportButton({ sales, year, month, displayName }: Props) {
   const disabled = sales.length === 0;
 
   const handleExport = () => {
     if (disabled) return;
 
+    const reportTitle = `דוח מכירות חודשי — ${displayName} — ${HEBREW_MONTHS[month]} ${year}`;
     const header = ["תאריך", "שם המערכת", "מחיר המערכת (₪)", "עמלת מכירה (₪)"];
     const rows: (string | number)[][] = [
+      [reportTitle],
       header,
       ...sales.map((s) => [
         formatSaleDate(s.saleDate),
@@ -39,10 +42,11 @@ export function ExportButton({ sales, year, month }: Props) {
     // Mark sheet as RTL for Excel
     ws["!views"] = [{ RTL: true }];
 
-    // Currency formatting for price/commission columns (columns C & D, rows 2..n+1)
+    // Currency formatting for price/commission columns (columns C & D, rows 3..n+2)
+    // Row 0 = report title, row 1 = column headers, rows 2+ = data
     const dataRowCount = sales.length;
     for (let i = 0; i < dataRowCount; i++) {
-      const r = i + 1; // row index in sheet (0-based; +1 because header is row 0)
+      const r = i + 2; // row index in sheet (0-based; +2 for title + header rows)
       const priceCell = XLSX.utils.encode_cell({ r, c: 2 });
       const comCell = XLSX.utils.encode_cell({ r, c: 3 });
       if (ws[priceCell]) ws[priceCell].z = '#,##0" ₪"';
@@ -54,7 +58,7 @@ export function ExportButton({ sales, year, month }: Props) {
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
     const mm = String(month + 1).padStart(2, "0");
-    XLSX.writeFile(wb, `sales-report-${year}-${mm}.xlsx`);
+    XLSX.writeFile(wb, `מכירות-${displayName}-${year}-${mm}.xlsx`);
   };
 
   return (
