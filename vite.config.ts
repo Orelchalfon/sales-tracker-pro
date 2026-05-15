@@ -12,4 +12,12 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    // Force Vite/Rollup to pre-bundle @tanstack/query-core. Without this,
+    // pnpm's strict symlink layout can cause Rollup on CI (Netlify) to fail
+    // resolving the transitive import from @tanstack/react-query.
+    optimizeDeps: {
+      include: ["@tanstack/query-core"],
+    },
+  },
 });
