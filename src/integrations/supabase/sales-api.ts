@@ -53,9 +53,13 @@ export async function fetchSaleYears(): Promise<number[]> {
 }
 
 export async function insertSale(input: SaleInput): Promise<Sale> {
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData.user) throw new Error("לא מחובר");
+
   const { data, error } = await supabase
     .from("sales")
     .insert({
+      user_id: userData.user.id,
       sale_date: input.saleDate,
       system_name: input.systemName,
       system_price: input.systemPrice,
@@ -68,8 +72,15 @@ export async function insertSale(input: SaleInput): Promise<Sale> {
   return rowToSale(data as SaleRow);
 }
 
+type SaleUpdate = {
+  sale_date?: string;
+  system_name?: string;
+  system_price?: number;
+  commission?: number;
+};
+
 export async function updateSale(id: string, patch: Partial<SaleInput>): Promise<Sale> {
-  const dbPatch: Record<string, unknown> = {};
+  const dbPatch: SaleUpdate = {};
   if (patch.saleDate !== undefined) dbPatch.sale_date = patch.saleDate;
   if (patch.systemName !== undefined) dbPatch.system_name = patch.systemName;
   if (patch.systemPrice !== undefined) dbPatch.system_price = patch.systemPrice;

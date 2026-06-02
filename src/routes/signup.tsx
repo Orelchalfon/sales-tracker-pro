@@ -30,8 +30,8 @@ function Signup() {
     if (error) {
       toast.error("שגיאה ביצירת חשבון: " + error.message);
     } else {
-      toast.success("חשבון נוצר בהצלחה, אנא התחבר");
-      navigate({ to: "/login" });
+      toast.success("חשבון נוצר בהצלחה");
+      navigate({ to: "/" });
     }
   };
 
